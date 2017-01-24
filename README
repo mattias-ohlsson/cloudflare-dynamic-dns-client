@@ -1,0 +1,30 @@
+        cloudflare-dynamic-dns-client - Cloudflare Dynamic DNS Client
+
+Dynamic DNS Client for Cloudflare.
+
+INSTALLATION
+
+    Install Cloudflare Dynamic DNS Client.
+
+      make install
+
+CONFIGURATION
+
+    Change email (Cloudflare email address), key (Cloudflare Global API Key) and zone
+    (Cloudflare DNS zone) in the configuration file.  Hostname, zone_id and
+    dns_record_id are optional.
+
+  - /etc/cloudflare-dynamic-dns-client.conf
+
+USAGE
+
+    Run the client manually or enable the systemd timer.
+
+  - Manually:
+
+      cloudflare-dynamic-dns-client
+
+  - Systemd timer:
+
+      systemctl enable cloudflare-dynamic-dns-client.timer
+      systemctl start cloudflare-dynamic-dns-client.timer
