@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodic Coudflare Dynamic DNS Client update
+
+[Timer]
+OnBootSec=1m
+OnUnitInactiveSec=1h
+
+[Install]
+WantedBy=multi-user.target
