@@ -1,0 +1,77 @@
+#!/bin/bash
+# Cloudflare Dynamic DNS Client
+# Version: 0.7
+#
+# Copyright (C) 2016-2017  Mattias Ohlsson
+# https://github.com/mattias-ohlsson/cloudflare-dynamic-dns-client
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+
+source /etc/cloudflare-dynamic-dns-client.conf
+
+name=$(basename "$0")
+
+command -v dig >/dev/null || { echo "$name: dig: command not found"; \
+ exit 1;}
+
+command -v curl >/dev/null || { echo "$name: curl: command not found"; \
+ exit 1;}
+
+ip=$(dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | cut -d'"' -f2)
+
+if [ -z "$hostname" ]; then
+	hostname=$(hostname)
+fi
+
+if [ -z "$zone_id" ]; then
+	resp=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$zone" \
+	 -H "X-Auth-Email: $email" \
+	 -H "X-Auth-Key: $key" \
+	 -H "Content-Type: application/json")
+	success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
+
+	if [ ! "$success" = true ]; then
+		echo "$name: $resp"
+		exit 1
+	fi
+
+	zone_id=$(echo $resp | sed -n 's|^{"result":\[{"id":"\([0-9a-f]\{32\}\)".*|\1|p')
+fi
+
+if [ -z "$dns_record_id" ]; then
+	resp=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=$hostname" \
+	 -H "X-Auth-Email: $email" \
+	 -H "X-Auth-Key: $key" \
+	 -H "Content-Type: application/json")
+	success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
+
+	if [ ! "$success" = true ]; then
+		echo "$name: $resp"
+		exit 1
+	fi
+
+	dns_record_id=$(echo $resp | sed -n 's|^{"result":\[{"id":"\([0-9a-f]\{32\}\)".*|\1|p')
+fi
+
+resp=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$dns_record_id" \
+ -H "X-Auth-Email: $email" \
+ -H "X-Auth-Key: $key" \
+ -H "Content-Type: application/json" \
+ --data '{"type":"A","name":"'$hostname'","content":"'$ip'"}')
+success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
+
+if [ ! "$success" = true ]; then
+	echo $resp | grep -q '"success":true' || echo "$name: $resp"
+fi
