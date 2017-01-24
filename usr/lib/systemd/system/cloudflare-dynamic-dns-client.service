@@ -1,0 +1,9 @@
+[Unit]
+Description=Coudflare Dynamic DNS Client
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cloudflare-dynamic-dns-client
+
+[Install]
+WantedBy=multi-user.target
