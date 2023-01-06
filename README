@@ -26,5 +26,4 @@ USAGE
 
   - Systemd timer:
 
-      systemctl enable cloudflare-dynamic-dns-client.timer
-      systemctl start cloudflare-dynamic-dns-client.timer
+      systemctl enable --now cloudflare-dynamic-dns-client.timer
