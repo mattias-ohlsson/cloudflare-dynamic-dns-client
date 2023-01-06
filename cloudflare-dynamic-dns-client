@@ -19,6 +19,8 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 
+set -e
+
 source /etc/cloudflare-dynamic-dns-client.conf
 
 name=$(basename "$0")
@@ -31,14 +33,15 @@ command -v curl >/dev/null || { echo "$name: curl: command not found"; \
 
 ip=$(dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | cut -d'"' -f2)
 
+echo ip: $ip
+
 if [ -z "$hostname" ]; then
 	hostname=$(hostname)
 fi
 
 if [ -z "$zone_id" ]; then
 	resp=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$zone" \
-	 -H "X-Auth-Email: $email" \
-	 -H "X-Auth-Key: $key" \
+	 -H "Authorization: Bearer $key" \
 	 -H "Content-Type: application/json")
 	success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
 
@@ -52,8 +55,7 @@ fi
 
 if [ -z "$dns_record_id" ]; then
 	resp=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=$hostname" \
-	 -H "X-Auth-Email: $email" \
-	 -H "X-Auth-Key: $key" \
+	 -H "Authorization: Bearer $key" \
 	 -H "Content-Type: application/json")
 	success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
 
@@ -65,9 +67,8 @@ if [ -z "$dns_record_id" ]; then
 	dns_record_id=$(echo $resp | sed -n 's|^{"result":\[{"id":"\([0-9a-f]\{32\}\)".*|\1|p')
 fi
 
-resp=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$dns_record_id" \
- -H "X-Auth-Email: $email" \
- -H "X-Auth-Key: $key" \
+resp=$(curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$dns_record_id" \
+ -H "Authorization: Bearer $key" \
  -H "Content-Type: application/json" \
  --data '{"type":"A","name":"'$hostname'","content":"'$ip'"}')
 success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
@@ -75,3 +76,8 @@ success=$(echo $resp | sed -n 's|.*"success":\([a-z]*\).*|\1|p')
 if [ ! "$success" = true ]; then
 	echo $resp | grep -q '"success":true' || echo "$name: $resp"
 fi
+
+echo curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$dns_record_id" \
+ -H "Authorization: Bearer $key" \
+ -H "Content-Type: application/json" \
+ --data '{"type":"A","name":"'$hostname'","content":"'$ip'"}'
